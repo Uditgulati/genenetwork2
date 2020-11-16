@@ -78,7 +78,7 @@ class DatasetType:
 
     def __init__(self, redis_instance):
         """Create a dictionary of samples where the value is set to Geno,
-Publish or ProbeSet. E.g.
+        Publish or ProbeSet. E.g.
 
         {'AD-cases-controls-MyersGeno': 'Geno',
          'AD-cases-controls-MyersPublish': 'Publish',

@@ -28,9 +28,8 @@ class SearchResultPage(object):
     #maxReturn = 3000
 
     def __init__(self, kw):
-        """This class gets invoked after hitting submit on the main menu (in
-views.py).
-
+        """
+        This class gets invoked after hitting submit on the main menu (in views.py).
         """
 
         ###########################################
