@@ -85,7 +85,6 @@ class SearchResultPage(object):
             else:
                 self.gen_search_result()
 
-
     def gen_search_result(self):
         """
         Get the info displayed in the search result table from the set of results computed in
@@ -125,11 +124,14 @@ class SearchResultPage(object):
                     trait_dict['mean'] = "N/A"
                     trait_dict['additive'] = "N/A"
                     if this_trait.mean != "" and this_trait.mean != None:
-                        trait_dict['mean'] = '%.3f' % this_trait.mean
-                    trait_dict['lrs_score'] = this_trait.LRS_score_repr
+                        trait_dict['mean'] = f"{this_trait.mean:.3f}"
+                    try:
+                        trait_dict['lod_score'] = f"{float(this_trait.LRS_score_repr) / 4.61:.1f}"
+                    except:
+                        trait_dict['lod_score'] = "N/A"
                     trait_dict['lrs_location'] = this_trait.LRS_location_repr
                     if this_trait.additive != "":
-                        trait_dict['additive'] = '%.3f' % this_trait.additive
+                        trait_dict['additive'] = f"{this_trait.additive:.3f}"
                 elif this_trait.dataset.type == "Geno":
                     trait_dict['location'] = this_trait.location_repr
                 elif this_trait.dataset.type == "Publish":
@@ -142,19 +144,29 @@ class SearchResultPage(object):
                     trait_dict['pubmed_text'] = this_trait.pubmed_text
                     trait_dict['mean'] = "N/A"
                     if this_trait.mean != "" and this_trait.mean != None:
-                        trait_dict['mean'] = '%.3f' % this_trait.mean
-                    trait_dict['lrs_score'] = this_trait.LRS_score_repr
+                        trait_dict['mean'] = f"{this_trait.mean:.3f}"
+                    try:
+                        trait_dict['lod_score'] = f"{float(this_trait.LRS_score_repr) / 4.61:.1f}"
+                    except:
+                        trait_dict['lod_score'] = "N/A"
                     trait_dict['lrs_location'] = this_trait.LRS_location_repr
                     trait_dict['additive'] = "N/A"
                     if this_trait.additive != "":
-                        trait_dict['additive'] = '%.3f' % this_trait.additive
+                        trait_dict['additive'] = f"{this_trait.additive:.3f}"
                 # Convert any bytes in dict to a normal utf-8 string
                 for key in trait_dict.keys():
                     if isinstance(trait_dict[key], bytes):
                         trait_dict[key] = trait_dict[key].decode('utf-8')
                 trait_list.append(trait_dict)
 
-        self.trait_list = json.dumps(trait_list)
+        self.trait_list = trait_list
+
+        if this_trait.dataset.type == "ProbeSet":
+            self.header_data_names = ['index', 'display_name', 'symbol', 'description', 'location', 'mean', 'lrs_score', 'lrs_location', 'additive']
+        elif this_trait.dataset.type == "Publish":
+            self.header_data_names = ['index', 'display_name', 'description', 'mean', 'authors', 'pubmed_text', 'lrs_score', 'lrs_location', 'additive']
+        elif this_trait.dataset.type == "Geno":
+            self.header_data_names = ['index', 'display_name', 'location']
 
     def search(self):
         """

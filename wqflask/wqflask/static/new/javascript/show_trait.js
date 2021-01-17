@@ -94,21 +94,7 @@ add = function() {
 $('#add_to_collection').click(add);
 sample_lists = js_data.sample_lists;
 sample_group_types = js_data.sample_group_types;
-d3.select("#select_compare_trait").on("click", (function(_this) {
-  return function() {
-    $('.scatter-matrix-container').remove();
-    return open_trait_selection();
-  };
-})(this));
-d3.select("#select_covariates").on("click", (function(_this) {
-  return function() {
-    return open_covariate_selection();
-  };
-})(this));
-$("#remove_covariates").click(function () {
-    $("input[name=covariates]").val("")
-    $(".selected-covariates").val("")
-});
+
 $(".select_covariates").click(function () {
   open_covariate_selection();
 });
@@ -116,11 +102,7 @@ $(".remove_covariates").click(function () {
   $("input[name=covariates]").val("")
   $(".selected-covariates").val("")
 });
-d3.select("#clear_compare_trait").on("click", (function(_this) {
-  return function() {
-    return $('.scatter-matrix-container').remove();
-  };
-})(this));
+
 open_trait_selection = function() {
   return $('#collections_holder').load('/collections/list?color_by_trait #collections_list', (function(_this) {
     return function() {
@@ -233,6 +215,8 @@ update_histogram = function() {
 
   if ($('input[name="transform"]').val() != ""){
     root.histogram_layout['xaxis']['title'] = "<b>" + js_data.unit_type +  " (" + $('input[name="transform"]').val() + ")</b>"
+  } else {
+    root.histogram_layout['xaxis']['title'] = "<b>" + js_data.unit_type + "</b>"
   }
 
   Plotly.newPlot('histogram', root.histogram_data, root.histogram_layout, root.modebar_options);
@@ -281,6 +265,8 @@ update_bar_chart = function() {
 
   if ($('input[name="transform"]').val() != ""){
     root.bar_layout['yaxis']['title'] = "<b>" + js_data.unit_type +  " (" + $('input[name="transform"]').val() + ")</b>"
+  } else {
+    root.bar_layout['yaxis']['title'] = "<b>" + js_data.unit_type + "</b>"
   }
 
   root.bar_data[0]['y'] = trait_vals
@@ -322,6 +308,8 @@ update_box_plot = function() {
 
   if ($('input[name="transform"]').val() != ""){
     root.box_layout['yaxis']['title'] = "<b>" + js_data.unit_type +  " (" + $('input[name="transform"]').val() + ")</b>"
+  } else {
+    root.box_layout['yaxis']['title'] = "<b>" + js_data.unit_type + "</b>"
   }
 
   Plotly.newPlot('box_plot', root.box_data, root.box_layout, root.modebar_options)
@@ -353,6 +341,8 @@ update_violin_plot = function() {
 
   if ($('input[name="transform"]').val() != ""){
     root.violin_layout['yaxis']['title'] = "<b>" + js_data.unit_type +  " (" + $('input[name="transform"]').val() + ")</b>"
+  } else {
+    root.violin_layout['yaxis']['title'] = "<b>" + js_data.unit_type + "</b>"
   }
 
   Plotly.newPlot('violin_plot', root.violin_data, root.violin_layout, root.modebar_options)
@@ -427,6 +417,25 @@ process_id = function() {
   }
   return processed;
 };
+
+fetch_sample_values = function() {
+  // This is meant to fetch all sample values using DataTables API, since they can't all be submitted with the form when using Scroller (and this should also be faster)
+  sample_val_dict = {};
+
+  table = 'samples_primary';
+  if ($('#' + table).length){
+    table_api = $('#' + table).DataTable();
+    val_nodes = table_api.column(3).nodes().to$();
+    for (_j = 0; _j < val_nodes.length; _j++){
+      sample_name = val_nodes[_j].childNodes[0].name.split(":")[1]
+      sample_val = val_nodes[_j].childNodes[0].value
+      sample_val_dict[sample_name] = sample_val
+    }
+  }
+
+  return sample_val_dict;
+}
+
 edit_data_change = function() {
   var already_seen, checkbox, name, real_dict, real_value, real_variance, row, rows, sample_sets, table, tables, _i, _j, _len, _len1;
   already_seen = {};
@@ -456,15 +465,15 @@ edit_data_change = function() {
         if (is_number(sample_val) && sample_val !== "") {
           sample_val = parseFloat(sample_val);
           sample_sets[table].add_value(sample_val);
-          if (typeof var_nodes !== 'undefined'){
-            sample_var = null;
-          } else {
+          try {
             sample_var = var_nodes[_j].childNodes[0].value
             if (is_number(sample_var)) {
               sample_var = parseFloat(sample_var)
             } else {
               sample_var = null;
             }
+          } catch {
+            sample_var = null;
           }
           sample_dict = {
             value: sample_val,
@@ -479,6 +488,7 @@ edit_data_change = function() {
         }
       }
     }
+
   }
 
   update_stat_values(sample_sets);
@@ -524,8 +534,31 @@ on_corr_method_change = function() {
 };
 $('select[name=corr_type]').change(on_corr_method_change);
 
+on_dataset_change = function() {
+  let dataset_type = $('select[name=corr_dataset] option:selected').data('type');
+  let location_type = $('select[name=location_type] option:selected').val();
+
+  if (dataset_type == "mrna_assay"){
+    $('#min_expr_filter').show();
+    $('select[name=location_type] option:disabled').prop('disabled', false)
+  }
+  else if (dataset_type == "pheno"){
+    $('#min_expr_filter').show();
+    $('select[name=location_type]>option:eq(0)').prop('disabled', true).attr('selected', false);
+    $('select[name=location_type]>option:eq(1)').prop('disabled', false).attr('selected', true);
+  }
+  else {
+    $('#min_expr_filter').hide();
+    $('select[name=location_type]>option:eq(0)').prop('disabled', false).attr('selected', true);
+    $('select[name=location_type]>option:eq(1)').prop('disabled', true).attr('selected', false);
+  }
+}
+
+$('select[name=corr_dataset]').change(on_dataset_change);
+$('select[name=location_type]').change(on_dataset_change);
+
 submit_special = function(url) {
-  get_table_contents_for_form_submit("trait_data_form");
+  $("input[name=sample_vals]").val(JSON.stringify(fetch_sample_values()))
   $("#trait_data_form").attr("action", url);
   $("#trait_data_form").submit();
 };
@@ -549,8 +582,8 @@ get_table_contents_for_form_submit = function(form_id) {
  });
 }
 
-var corr_input_list = ['corr_type', 'primary_samples', 'trait_id', 'dataset', 'group', 'tool_used', 'form_url', 'corr_sample_method', 'corr_samples_group', 'corr_dataset', 'min_expr',
-                        'corr_return_results', 'loc_chr', 'min_loc_mb', 'max_loc_mb', 'p_range_lower', 'p_range_upper']
+var corr_input_list = ['sample_vals', 'corr_type', 'primary_samples', 'trait_id', 'dataset', 'group', 'tool_used', 'form_url', 'corr_sample_method', 'corr_samples_group', 'corr_dataset', 'min_expr',
+                        'corr_return_results', 'location_type', 'loc_chr', 'min_loc_mb', 'max_loc_mb', 'p_range_lower', 'p_range_upper']
 
 $(".corr_compute").on("click", (function(_this) {
   return function() {
@@ -568,14 +601,29 @@ create_value_dropdown = function(value) {
 populate_sample_attributes_values_dropdown = function() {
   var attribute_info, key, sample_attributes, selected_attribute, value, _i, _len, _ref, _ref1, _results;
   $('#attribute_values').empty();
-  sample_attributes = {};
-  attr_keys = Object.keys(js_data.attributes).sort();
-  for (i=0; i < attr_keys.length; i++) {
-    attribute_info = js_data.attributes[attr_keys[i]];
-    sample_attributes[attribute_info.name] = attribute_info.distinct_values;
+  sample_attributes = [];
+
+  var attributes_as_list = Object.keys(js_data.attributes).map(function(key) {
+    return [key, js_data.attributes[key].name.toLowerCase()];
+  });
+
+  attributes_as_list.sort(function(first, second) {
+    if (second[1] > first[1]){
+      return -1
+    }
+    if (first[1] > second[1]){
+      return 1
+    }
+    return 0
+  });
+
+  for (i=0; i < attributes_as_list.length; i++) {
+    attribute_info = js_data.attributes[attributes_as_list[i][0]]
+    sample_attributes.push(attribute_info.distinct_values);
   }
-  selected_attribute = $('#exclude_menu').val().replace("_", " ");
-  _ref1 = sample_attributes[selected_attribute];
+
+  selected_attribute = $('#exclude_column').val()
+  _ref1 = sample_attributes[selected_attribute - 1];
   _results = [];
   for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
     value = _ref1[_i];
@@ -590,25 +638,39 @@ if (Object.keys(js_data.attributes).length){
   populate_sample_attributes_values_dropdown();
 }
 
-$('#exclude_menu').change(populate_sample_attributes_values_dropdown);
+$('#exclude_column').change(populate_sample_attributes_values_dropdown);
 block_by_attribute_value = function() {
   var attribute_name, cell_class, exclude_by_value;
-  attribute_name = $('#exclude_menu').val();
+
+  let exclude_group = $('#exclude_by_attr_group').val();
+  let exclude_column = $('#exclude_column').val();
+
+  if (exclude_group === "other") {
+    var table_api = $('#samples_other').DataTable();
+  } else {
+    var table_api = $('#samples_primary').DataTable();
+  }
+
   exclude_by_value = $('#attribute_values').val();
-  cell_class = ".column_name-" + attribute_name;
-  return $(cell_class).each((function(_this) {
-    return function(index, element) {
-      var row;
-      if ($.trim($(element).text()) === exclude_by_value) {
-        row = $(element).parent('tr');
-        return $(row).find(".trait-value-input").val("x");
-      }
-    };
-  })(this));
+
+  let val_nodes = table_api.column(3).nodes().to$();
+  let exclude_val_nodes = table_api.column(attribute_start_pos + parseInt(exclude_column)).nodes().to$();
+
+  for (i = 0; i < exclude_val_nodes.length; i++) {
+    let this_col_value = exclude_val_nodes[i].childNodes[0].data;
+    let this_val_node = val_nodes[i].childNodes[0];
+
+    if (this_col_value == exclude_by_value){
+      this_val_node.value = "x";
+    }
+  }
+
+  edit_data_change();
 };
-$('#exclude_group').click(block_by_attribute_value);
+$('#exclude_by_attr').click(block_by_attribute_value);
+
 block_by_index = function() {
-  var end_index, error, index, index_list, index_set, index_string, start_index, _i, _j, _k, _len, _len1, _ref, _results;
+  var end_index, error, index, index_list, index_set, index_string, start_index, _i, _j, _k, _len, _len1, _ref;
   index_string = $('#remove_samples_field').val();
   index_list = [];
   _ref = index_string.split(",");
@@ -630,7 +692,7 @@ block_by_index = function() {
       index_list.push(index);
     }
   }
-  _results = [];
+
   let block_group = $('#block_group').val();
   if (block_group === "other") {
     table_api = $('#samples_other').DataTable();
@@ -645,14 +707,95 @@ block_by_index = function() {
   }
 };
 
-hide_no_value = function() {
-  return $('.value_se').each((function(_this) {
-    return function(_index, element) {
-      if ($(element).find('.trait-value-input').val() === 'x') {
-        return $(element).hide();
+filter_by_value = function() {
+  let filter_logic = $('#filter_logic').val();
+  let filter_column = $('#filter_column').val();
+  let filter_value = $('#filter_value').val();
+  let block_group = $('#filter_group').val();
+
+  if (block_group === "other") {
+    var table_api = $('#samples_other').DataTable();
+  } else {
+    var table_api = $('#samples_primary').DataTable();
+  }
+
+  let val_nodes = table_api.column(3).nodes().to$();
+  if (filter_column == "value"){
+    var filter_val_nodes = table_api.column(3).nodes().to$();
+  }
+  else if (filter_column == "stderr"){
+    var filter_val_nodes = table_api.column(5).nodes().to$();
+  }
+  else if (!isNaN(filter_column)){
+    var filter_val_nodes = table_api.column(attribute_start_pos + parseInt(filter_column)).nodes().to$();
+  }
+  else {
+    return false
+  }
+
+  for (i = 0; i < filter_val_nodes.length; i++) {
+    if (filter_column == "value" || filter_column == "stderr"){
+      var this_col_value = filter_val_nodes[i].childNodes[0].value;
+    } else {
+      var this_col_value = filter_val_nodes[i].childNodes[0].data;
+    }
+    let this_val_node = val_nodes[i].childNodes[0];
+
+    if(!isNaN(this_col_value) && !isNaN(filter_value)) {
+      if (filter_logic == "greater_than"){
+        if (parseFloat(this_col_value) <= parseFloat(filter_value)){
+          this_val_node.value = "x";
+        }
       }
-    };
-  })(this));
+      else if (filter_logic == "less_than"){
+        if (parseFloat(this_col_value) >= parseFloat(filter_value)){
+          this_val_node.value = "x";
+        }
+      }
+      else if (filter_logic == "greater_or_equal"){
+        if (parseFloat(this_col_value) < parseFloat(filter_value)){
+          this_val_node.value = "x";
+        }
+      }
+      else if (filter_logic == "less_or_equal"){
+        if (parseFloat(this_col_value) > parseFloat(filter_value)){
+          this_val_node.value = "x";
+        }
+      }
+    }
+  }
+};
+
+hide_no_value_filter = function( settings, data, dataIndex ) {
+  this_value = table_api.column(3).nodes().to$()[dataIndex].childNodes[0].value;
+  if (this_value == "x"){
+    return false
+  } else {
+    return true
+  }
+}
+
+hide_no_value = function() {
+  tables = ['samples_primary', 'samples_other'];
+  filter_active = $(this).data("active");
+  for (_i = 0, _len = tables.length; _i < _len; _i++) {
+    table = tables[_i];
+    if ($('#' + table).length) {
+      table_api = $('#' + table).DataTable();
+      if (filter_active == "true"){
+        $(this).val("Hide No Value")
+        table_api.draw();
+        $(this).data("active", "false");
+      } else {
+        $(this).val("Show No Value")
+        $.fn.dataTable.ext.search.push(hide_no_value_filter);
+        table_api.search();
+        table_api.draw();
+        $.fn.dataTable.ext.search.splice($.fn.dataTable.ext.search.indexOf(hide_no_value_filter, 1));
+        $(this).data("active", "true");
+      }
+    }
+  }
 };
 $('#hide_no_value').click(hide_no_value);
 
@@ -668,6 +811,7 @@ $('#block_outliers').click(block_outliers);
 reset_samples_table = function() {
   $('input[name="transform"]').val("");
   $('span[name="transform_text"]').text("")
+  $('#hide_no_value').val("Hide No Value")
   tables = ['samples_primary', 'samples_other'];
   for (_i = 0, _len = tables.length; _i < _len; _i++) {
     table = tables[_i];
@@ -685,11 +829,13 @@ reset_samples_table = function() {
           this_node.value = this_node.attributes["data-value"].value;
         }
       }
+      table_api.draw();
     }
   }
 };
 $('.reset').click(function() {
   reset_samples_table();
+  $('input[name="transform"]').val("");
   edit_data_change();
 });
 
@@ -1179,7 +1325,7 @@ if (js_data.num_values < 256) {
     margin: {
         l: left_margin,
         r: 30,
-        t: 30,
+        t: 100,
         b: bottom_margin
     }
   };
@@ -1528,6 +1674,12 @@ $('#block_by_index').click(function(){
   block_by_index();
   edit_data_change();
 });
+
+$('#filter_by_value').click(function(){
+  filter_by_value();
+  edit_data_change();
+})
+
 $('#exclude_group').click(edit_data_change);
 $('#block_outliers').click(edit_data_change);
 $('#reset').click(edit_data_change);
